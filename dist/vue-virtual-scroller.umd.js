@@ -1849,6 +1849,9 @@
       },
       finalActive: function finalActive() {
         return this.active && this.vscrollData.active;
+      },
+      parentNode: function parentNode() {
+        return this.$el.parentNode;
       }
     },
     watch: {
@@ -1989,13 +1992,13 @@
       },
       observeSize: function observeSize() {
         if (!this.vscrollResizeObserver) return;
-        this.vscrollResizeObserver.observe(this.$el.parentNode);
-        this.$el.parentNode.addEventListener('resize', this.onResize);
+        this.vscrollResizeObserver.observe(this.parentNode);
+        this.parentNode.addEventListener('resize', this.onResize);
       },
       unobserveSize: function unobserveSize() {
         if (!this.vscrollResizeObserver) return;
-        this.vscrollResizeObserver.unobserve(this.$el.parentNode);
-        this.$el.parentNode.removeEventListener('resize', this.onResize);
+        this.vscrollResizeObserver.unobserve(this.parentNode);
+        this.parentNode.removeEventListener('resize', this.onResize);
       },
       onResize: function onResize(event) {
         var _event$detail$content = event.detail.contentRect,
