@@ -80,7 +80,7 @@
     if (typeof o === "string") return _arrayLikeToArray(o, minLen);
     var n = Object.prototype.toString.call(o).slice(8, -1);
     if (n === "Object" && o.constructor) n = o.constructor.name;
-    if (n === "Map" || n === "Set") return Array.from(n);
+    if (n === "Map" || n === "Set") return Array.from(o);
     if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray(o, minLen);
   }
 
@@ -148,116 +148,243 @@
   }
 
   function getInternetExplorerVersion() {
-  	var ua = window.navigator.userAgent;
+    var ua = window.navigator.userAgent;
+    var msie = ua.indexOf('MSIE ');
 
-  	var msie = ua.indexOf('MSIE ');
-  	if (msie > 0) {
-  		// IE 10 or older => return version number
-  		return parseInt(ua.substring(msie + 5, ua.indexOf('.', msie)), 10);
-  	}
+    if (msie > 0) {
+      // IE 10 or older => return version number
+      return parseInt(ua.substring(msie + 5, ua.indexOf('.', msie)), 10);
+    }
 
-  	var trident = ua.indexOf('Trident/');
-  	if (trident > 0) {
-  		// IE 11 => return version number
-  		var rv = ua.indexOf('rv:');
-  		return parseInt(ua.substring(rv + 3, ua.indexOf('.', rv)), 10);
-  	}
+    var trident = ua.indexOf('Trident/');
 
-  	var edge = ua.indexOf('Edge/');
-  	if (edge > 0) {
-  		// Edge (IE 12+) => return version number
-  		return parseInt(ua.substring(edge + 5, ua.indexOf('.', edge)), 10);
-  	}
+    if (trident > 0) {
+      // IE 11 => return version number
+      var rv = ua.indexOf('rv:');
+      return parseInt(ua.substring(rv + 3, ua.indexOf('.', rv)), 10);
+    }
 
-  	// other browser
-  	return -1;
+    var edge = ua.indexOf('Edge/');
+
+    if (edge > 0) {
+      // Edge (IE 12+) => return version number
+      return parseInt(ua.substring(edge + 5, ua.indexOf('.', edge)), 10);
+    } // other browser
+
+
+    return -1;
   }
 
-  var isIE = void 0;
+  //
+  var isIE;
 
   function initCompat() {
-  	if (!initCompat.init) {
-  		initCompat.init = true;
-  		isIE = getInternetExplorerVersion() !== -1;
-  	}
+    if (!initCompat.init) {
+      initCompat.init = true;
+      isIE = getInternetExplorerVersion() !== -1;
+    }
   }
 
-  var ResizeObserver$1 = { render: function render() {
-  		var _vm = this;var _h = _vm.$createElement;var _c = _vm._self._c || _h;return _c('div', { staticClass: "resize-observer", attrs: { "tabindex": "-1" } });
-  	}, staticRenderFns: [], _scopeId: 'data-v-b329ee4c',
-  	name: 'resize-observer',
+  var script = {
+    name: 'ResizeObserver',
+    mounted: function mounted() {
+      var _this = this;
 
-  	methods: {
-  		compareAndNotify: function compareAndNotify() {
-  			if (this._w !== this.$el.offsetWidth || this._h !== this.$el.offsetHeight) {
-  				this._w = this.$el.offsetWidth;
-  				this._h = this.$el.offsetHeight;
-  				this.$emit('notify');
-  			}
-  		},
-  		addResizeHandlers: function addResizeHandlers() {
-  			this._resizeObject.contentDocument.defaultView.addEventListener('resize', this.compareAndNotify);
-  			this.compareAndNotify();
-  		},
-  		removeResizeHandlers: function removeResizeHandlers() {
-  			if (this._resizeObject && this._resizeObject.onload) {
-  				if (!isIE && this._resizeObject.contentDocument) {
-  					this._resizeObject.contentDocument.defaultView.removeEventListener('resize', this.compareAndNotify);
-  				}
-  				delete this._resizeObject.onload;
-  			}
-  		}
-  	},
+      initCompat();
+      this.$nextTick(function () {
+        _this._w = _this.$el.offsetWidth;
+        _this._h = _this.$el.offsetHeight;
+      });
+      var object = document.createElement('object');
+      this._resizeObject = object;
+      object.setAttribute('aria-hidden', 'true');
+      object.setAttribute('tabindex', -1);
+      object.onload = this.addResizeHandlers;
+      object.type = 'text/html';
 
-  	mounted: function mounted() {
-  		var _this = this;
+      if (isIE) {
+        this.$el.appendChild(object);
+      }
 
-  		initCompat();
-  		this.$nextTick(function () {
-  			_this._w = _this.$el.offsetWidth;
-  			_this._h = _this.$el.offsetHeight;
-  		});
-  		var object = document.createElement('object');
-  		this._resizeObject = object;
-  		object.setAttribute('aria-hidden', 'true');
-  		object.setAttribute('tabindex', -1);
-  		object.onload = this.addResizeHandlers;
-  		object.type = 'text/html';
-  		if (isIE) {
-  			this.$el.appendChild(object);
-  		}
-  		object.data = 'about:blank';
-  		if (!isIE) {
-  			this.$el.appendChild(object);
-  		}
-  	},
-  	beforeDestroy: function beforeDestroy() {
-  		this.removeResizeHandlers();
-  	}
+      object.data = 'about:blank';
+
+      if (!isIE) {
+        this.$el.appendChild(object);
+      }
+    },
+    beforeDestroy: function beforeDestroy() {
+      this.removeResizeHandlers();
+    },
+    methods: {
+      compareAndNotify: function compareAndNotify() {
+        if (this._w !== this.$el.offsetWidth || this._h !== this.$el.offsetHeight) {
+          this._w = this.$el.offsetWidth;
+          this._h = this.$el.offsetHeight;
+          this.$emit('notify', {
+            width: this._w,
+            height: this._h
+          });
+        }
+      },
+      addResizeHandlers: function addResizeHandlers() {
+        this._resizeObject.contentDocument.defaultView.addEventListener('resize', this.compareAndNotify);
+
+        this.compareAndNotify();
+      },
+      removeResizeHandlers: function removeResizeHandlers() {
+        if (this._resizeObject && this._resizeObject.onload) {
+          if (!isIE && this._resizeObject.contentDocument) {
+            this._resizeObject.contentDocument.defaultView.removeEventListener('resize', this.compareAndNotify);
+          }
+
+          this.$el.removeChild(this._resizeObject);
+          this._resizeObject.onload = null;
+          this._resizeObject = null;
+        }
+      }
+    }
   };
 
-  // Install the components
+  function normalizeComponent(template, style, script, scopeId, isFunctionalTemplate, moduleIdentifier /* server only */, shadowMode, createInjector, createInjectorSSR, createInjectorShadow) {
+      if (typeof shadowMode !== 'boolean') {
+          createInjectorSSR = createInjector;
+          createInjector = shadowMode;
+          shadowMode = false;
+      }
+      // Vue.extend constructor export interop.
+      const options = typeof script === 'function' ? script.options : script;
+      // render functions
+      if (template && template.render) {
+          options.render = template.render;
+          options.staticRenderFns = template.staticRenderFns;
+          options._compiled = true;
+          // functional template
+          if (isFunctionalTemplate) {
+              options.functional = true;
+          }
+      }
+      // scopedId
+      if (scopeId) {
+          options._scopeId = scopeId;
+      }
+      let hook;
+      if (moduleIdentifier) {
+          // server build
+          hook = function (context) {
+              // 2.3 injection
+              context =
+                  context || // cached call
+                      (this.$vnode && this.$vnode.ssrContext) || // stateful
+                      (this.parent && this.parent.$vnode && this.parent.$vnode.ssrContext); // functional
+              // 2.2 with runInNewContext: true
+              if (!context && typeof __VUE_SSR_CONTEXT__ !== 'undefined') {
+                  context = __VUE_SSR_CONTEXT__;
+              }
+              // inject component styles
+              if (style) {
+                  style.call(this, createInjectorSSR(context));
+              }
+              // register component module identifier for async chunk inference
+              if (context && context._registeredComponents) {
+                  context._registeredComponents.add(moduleIdentifier);
+              }
+          };
+          // used by ssr in case component is cached and beforeCreate
+          // never gets called
+          options._ssrRegister = hook;
+      }
+      else if (style) {
+          hook = shadowMode
+              ? function (context) {
+                  style.call(this, createInjectorShadow(context, this.$root.$options.shadowRoot));
+              }
+              : function (context) {
+                  style.call(this, createInjector(context));
+              };
+      }
+      if (hook) {
+          if (options.functional) {
+              // register for functional component in vue file
+              const originalRender = options.render;
+              options.render = function renderWithStyleInjection(h, context) {
+                  hook.call(context);
+                  return originalRender(h, context);
+              };
+          }
+          else {
+              // inject component registration as beforeCreate hook
+              const existing = options.beforeCreate;
+              options.beforeCreate = existing ? [].concat(existing, hook) : [hook];
+          }
+      }
+      return script;
+  }
+
+  /* script */
+  const __vue_script__ = script;
+  /* template */
+  var __vue_render__ = function() {
+    var _vm = this;
+    var _h = _vm.$createElement;
+    var _c = _vm._self._c || _h;
+    return _c("div", {
+      staticClass: "resize-observer",
+      attrs: { tabindex: "-1" }
+    })
+  };
+  var __vue_staticRenderFns__ = [];
+  __vue_render__._withStripped = true;
+
+    /* style */
+    const __vue_inject_styles__ = undefined;
+    /* scoped */
+    const __vue_scope_id__ = "data-v-2b830392";
+    /* module identifier */
+    const __vue_module_identifier__ = undefined;
+    /* functional template */
+    const __vue_is_functional_template__ = false;
+    /* style inject */
+    
+    /* style inject SSR */
+    
+    /* style inject shadow dom */
+    
+
+    
+    const __vue_component__ = normalizeComponent(
+      { render: __vue_render__, staticRenderFns: __vue_staticRenderFns__ },
+      __vue_inject_styles__,
+      __vue_script__,
+      __vue_scope_id__,
+      __vue_is_functional_template__,
+      __vue_module_identifier__,
+      false,
+      undefined,
+      undefined,
+      undefined
+    );
+
   function install(Vue) {
-  	Vue.component('resize-observer', ResizeObserver$1);
-  	Vue.component('ResizeObserver', ResizeObserver$1);
+    Vue.component('resize-observer', __vue_component__);
+    Vue.component('ResizeObserver', __vue_component__);
   }
 
-  // Plugin
   var plugin = {
-  	// eslint-disable-next-line no-undef
-  	version: "0.4.5",
-  	install: install
+    // eslint-disable-next-line no-undef
+    version: "0.5.0",
+    install: install
   };
 
-  // Auto-install
   var GlobalVue = null;
+
   if (typeof window !== 'undefined') {
-  	GlobalVue = window.Vue;
+    GlobalVue = window.Vue;
   } else if (typeof global !== 'undefined') {
-  	GlobalVue = global.Vue;
+    GlobalVue = global.Vue;
   }
+
   if (GlobalVue) {
-  	GlobalVue.use(plugin);
+    GlobalVue.use(plugin);
   }
 
   function _typeof$1(obj) {
@@ -562,8 +689,18 @@
 
   var commonjsGlobal = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
 
-  function createCommonjsModule(fn, module) {
-  	return module = { exports: {} }, fn(module, module.exports), module.exports;
+  function createCommonjsModule(fn, basedir, module) {
+  	return module = {
+  	  path: basedir,
+  	  exports: {},
+  	  require: function (path, base) {
+        return commonjsRequire(path, (base === undefined || base === null) ? module.path : base);
+      }
+  	}, fn(module, module.exports), module.exports;
+  }
+
+  function commonjsRequire () {
+  	throw new Error('Dynamic requires are not currently supported by @rollup/plugin-commonjs');
   }
 
   var scrollparent = createCommonjsModule(function (module) {
@@ -651,15 +788,15 @@
   }
 
   var uid = 0;
-  var script = {
+  var script$1 = {
     name: 'RecycleScroller',
     components: {
-      ResizeObserver: ResizeObserver$1
+      ResizeObserver: __vue_component__
     },
     directives: {
       ObserveVisibility: ObserveVisibility
     },
-    props: _objectSpread2({}, props, {
+    props: _objectSpread2(_objectSpread2({}, props), {}, {
       itemSize: {
         type: Number,
         default: null
@@ -1176,7 +1313,7 @@
     }
   };
 
-  function normalizeComponent(template, style, script, scopeId, isFunctionalTemplate, moduleIdentifier /* server only */, shadowMode, createInjector, createInjectorSSR, createInjectorShadow) {
+  function normalizeComponent$1(template, style, script, scopeId, isFunctionalTemplate, moduleIdentifier /* server only */, shadowMode, createInjector, createInjectorSSR, createInjectorShadow) {
       if (typeof shadowMode !== 'boolean') {
           createInjectorSSR = createInjector;
           createInjector = shadowMode;
@@ -1252,9 +1389,9 @@
   }
 
   /* script */
-  const __vue_script__ = script;
+  const __vue_script__$1 = script$1;
   /* template */
-  var __vue_render__ = function() {
+  var __vue_render__$1 = function() {
     var _obj, _obj$1;
     var _vm = this;
     var _h = _vm.$createElement;
@@ -1358,17 +1495,17 @@
       1
     )
   };
-  var __vue_staticRenderFns__ = [];
-  __vue_render__._withStripped = true;
+  var __vue_staticRenderFns__$1 = [];
+  __vue_render__$1._withStripped = true;
 
     /* style */
-    const __vue_inject_styles__ = undefined;
+    const __vue_inject_styles__$1 = undefined;
     /* scoped */
-    const __vue_scope_id__ = undefined;
+    const __vue_scope_id__$1 = undefined;
     /* module identifier */
-    const __vue_module_identifier__ = undefined;
+    const __vue_module_identifier__$1 = undefined;
     /* functional template */
-    const __vue_is_functional_template__ = false;
+    const __vue_is_functional_template__$1 = false;
     /* style inject */
     
     /* style inject SSR */
@@ -1377,23 +1514,23 @@
     
 
     
-    const __vue_component__ = normalizeComponent(
-      { render: __vue_render__, staticRenderFns: __vue_staticRenderFns__ },
-      __vue_inject_styles__,
-      __vue_script__,
-      __vue_scope_id__,
-      __vue_is_functional_template__,
-      __vue_module_identifier__,
+    const __vue_component__$1 = /*#__PURE__*/normalizeComponent$1(
+      { render: __vue_render__$1, staticRenderFns: __vue_staticRenderFns__$1 },
+      __vue_inject_styles__$1,
+      __vue_script__$1,
+      __vue_scope_id__$1,
+      __vue_is_functional_template__$1,
+      __vue_module_identifier__$1,
       false,
       undefined,
       undefined,
       undefined
     );
 
-  var script$1 = {
+  var script$2 = {
     name: 'DynamicScroller',
     components: {
-      RecycleScroller: __vue_component__
+      RecycleScroller: __vue_component__$1
     },
     inheritAttrs: false,
     provide: function provide() {
@@ -1429,7 +1566,7 @@
         vscrollResizeObserver: this.$_resizeObserver
       };
     },
-    props: _objectSpread2({}, props, {
+    props: _objectSpread2(_objectSpread2({}, props), {}, {
       minItemSize: {
         type: [Number, String],
         required: true
@@ -1576,10 +1713,10 @@
   };
 
   /* script */
-  const __vue_script__$1 = script$1;
+  const __vue_script__$2 = script$2;
 
   /* template */
-  var __vue_render__$1 = function() {
+  var __vue_render__$2 = function() {
     var _vm = this;
     var _h = _vm.$createElement;
     var _c = _vm._self._c || _h;
@@ -1634,17 +1771,17 @@
       2
     )
   };
-  var __vue_staticRenderFns__$1 = [];
-  __vue_render__$1._withStripped = true;
+  var __vue_staticRenderFns__$2 = [];
+  __vue_render__$2._withStripped = true;
 
     /* style */
-    const __vue_inject_styles__$1 = undefined;
+    const __vue_inject_styles__$2 = undefined;
     /* scoped */
-    const __vue_scope_id__$1 = undefined;
+    const __vue_scope_id__$2 = undefined;
     /* module identifier */
-    const __vue_module_identifier__$1 = undefined;
+    const __vue_module_identifier__$2 = undefined;
     /* functional template */
-    const __vue_is_functional_template__$1 = false;
+    const __vue_is_functional_template__$2 = false;
     /* style inject */
     
     /* style inject SSR */
@@ -1653,20 +1790,20 @@
     
 
     
-    const __vue_component__$1 = normalizeComponent(
-      { render: __vue_render__$1, staticRenderFns: __vue_staticRenderFns__$1 },
-      __vue_inject_styles__$1,
-      __vue_script__$1,
-      __vue_scope_id__$1,
-      __vue_is_functional_template__$1,
-      __vue_module_identifier__$1,
+    const __vue_component__$2 = /*#__PURE__*/normalizeComponent$1(
+      { render: __vue_render__$2, staticRenderFns: __vue_staticRenderFns__$2 },
+      __vue_inject_styles__$2,
+      __vue_script__$2,
+      __vue_scope_id__$2,
+      __vue_is_functional_template__$2,
+      __vue_module_identifier__$2,
       false,
       undefined,
       undefined,
       undefined
     );
 
-  var script$2 = {
+  var script$3 = {
     name: 'DynamicScrollerItem',
     inject: ['vscrollData', 'vscrollParent', 'vscrollResizeObserver'],
     props: {
@@ -1851,12 +1988,12 @@
         }
       },
       observeSize: function observeSize() {
-        if (!this.vscrollResizeObserver || !this.$el.parentNode) return;
+        if (!this.vscrollResizeObserver) return;
         this.vscrollResizeObserver.observe(this.$el.parentNode);
         this.$el.parentNode.addEventListener('resize', this.onResize);
       },
       unobserveSize: function unobserveSize() {
-        if (!this.vscrollResizeObserver || !this.$el.parentNode) return;
+        if (!this.vscrollResizeObserver) return;
         this.vscrollResizeObserver.unobserve(this.$el.parentNode);
         this.$el.parentNode.removeEventListener('resize', this.onResize);
       },
@@ -1873,18 +2010,18 @@
   };
 
   /* script */
-  const __vue_script__$2 = script$2;
+  const __vue_script__$3 = script$3;
 
   /* template */
 
     /* style */
-    const __vue_inject_styles__$2 = undefined;
+    const __vue_inject_styles__$3 = undefined;
     /* scoped */
-    const __vue_scope_id__$2 = undefined;
+    const __vue_scope_id__$3 = undefined;
     /* module identifier */
-    const __vue_module_identifier__$2 = undefined;
+    const __vue_module_identifier__$3 = undefined;
     /* functional template */
-    const __vue_is_functional_template__$2 = undefined;
+    const __vue_is_functional_template__$3 = undefined;
     /* style inject */
     
     /* style inject SSR */
@@ -1893,13 +2030,13 @@
     
 
     
-    const __vue_component__$2 = normalizeComponent(
+    const __vue_component__$3 = /*#__PURE__*/normalizeComponent$1(
       {},
-      __vue_inject_styles__$2,
-      __vue_script__$2,
-      __vue_scope_id__$2,
-      __vue_is_functional_template__$2,
-      __vue_module_identifier__$2,
+      __vue_inject_styles__$3,
+      __vue_script__$3,
+      __vue_scope_id__$3,
+      __vue_is_functional_template__$3,
+      __vue_module_identifier__$3,
       false,
       undefined,
       undefined,
@@ -1999,12 +2136,12 @@
   }
 
   function registerComponents(Vue, prefix) {
-    Vue.component("".concat(prefix, "recycle-scroller"), __vue_component__);
-    Vue.component("".concat(prefix, "RecycleScroller"), __vue_component__);
-    Vue.component("".concat(prefix, "dynamic-scroller"), __vue_component__$1);
-    Vue.component("".concat(prefix, "DynamicScroller"), __vue_component__$1);
-    Vue.component("".concat(prefix, "dynamic-scroller-item"), __vue_component__$2);
-    Vue.component("".concat(prefix, "DynamicScrollerItem"), __vue_component__$2);
+    Vue.component("".concat(prefix, "recycle-scroller"), __vue_component__$1);
+    Vue.component("".concat(prefix, "RecycleScroller"), __vue_component__$1);
+    Vue.component("".concat(prefix, "dynamic-scroller"), __vue_component__$2);
+    Vue.component("".concat(prefix, "DynamicScroller"), __vue_component__$2);
+    Vue.component("".concat(prefix, "dynamic-scroller-item"), __vue_component__$3);
+    Vue.component("".concat(prefix, "DynamicScrollerItem"), __vue_component__$3);
   }
 
   var plugin$2 = {
@@ -2040,10 +2177,10 @@
     GlobalVue$2.use(plugin$2);
   }
 
-  exports.DynamicScroller = __vue_component__$1;
-  exports.DynamicScrollerItem = __vue_component__$2;
+  exports.DynamicScroller = __vue_component__$2;
+  exports.DynamicScrollerItem = __vue_component__$3;
   exports.IdState = IdState;
-  exports.RecycleScroller = __vue_component__;
+  exports.RecycleScroller = __vue_component__$1;
   exports.default = plugin$2;
 
   Object.defineProperty(exports, '__esModule', { value: true });
